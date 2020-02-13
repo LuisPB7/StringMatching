@@ -1,5 +1,7 @@
 # StringMatching
 
+First, please download the datasets folder from the following link: https://mega.nz/#!9gYz0abK!Jo0ouFJ6i-KKTWTqA-DKQcmlDFVXt0pCGO-do56gKj0
+
 Usage:
 
 ```python3 main.py --model=MODEL --train=TRAIN --test=TEST```
