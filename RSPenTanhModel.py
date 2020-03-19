@@ -2,7 +2,7 @@ import torch
 from torch import nn
 from torchvision import transforms, datasets
 from torch.autograd import Variable
-from layers import PenalizedTanh, HardAlignmentAttention, GRUPenTanh, Bidirectional
+from layers import PenalizedTanh, HardAlignmentAttention, GRUPenTanh
 from utils import StringMatchingDataset, PadSequence
 from variables import *
 from torch.utils.data import DataLoader
