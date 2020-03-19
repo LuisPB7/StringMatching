@@ -2,13 +2,14 @@ import torch
 from torch import nn
 from torchvision import transforms, datasets
 from torch.autograd import Variable
-from layers import PenalizedTanh, HardAlignmentAttention, GRUPenTanh
+from layers import PenalizedTanh, HardAlignmentAttention
 from utils import StringMatchingDataset, PadSequence
 from variables import *
 from torch.utils.data import DataLoader
 from torch.nn import functional as F
 import pytorch_lightning as pl
 from collections import OrderedDict
+from RTransformer import RTransformer
 
 torch.manual_seed(0)
 torch.backends.cudnn.deterministic=True
@@ -17,25 +18,29 @@ torch.backends.cudnn.benchmark=False
 class Encoder(nn.Module):
     def __init__(self):
         super(Encoder, self).__init__()
-        self.hidden_size = HIDDEN_SIZE
+        self.hidden_size = 512
         self.dropout = nn.Dropout(DROPOUT_P)
-        self.gru1 = GRUPenTanh(CHAR_SIZE,HIDDEN_SIZE)
-        self.gru2 = GRUPenTanh(HIDDEN_SIZE*2,HIDDEN_SIZE)
+        self.relu = nn.ReLU()
+        self.gru1 = nn.GRU(CHAR_SIZE, hidden_size=int(self.hidden_size / 2), batch_first=True, bidirectional=True)
+        self.gru2 = RTransformer(512, 'GRU', 7, 3, 1, 8, DROPOUT_P)
     
     def forward(self, s, lengths):
-        b_size, seq_size, feat_size = s.size()       
-        s_rep, hidden_1 = self.gru1(s)
+        s_rep, _ = self.gru1(s)
         s_rep = self.dropout(s_rep)
-        s_rep, last = self.gru2(s_rep)
-        last = self.dropout(last)
-        return last
+        s_rep = self.gru2(s_rep)
+        s_rep = self.dropout(s_rep)
+        s_rep_max = nn.MaxPool2d((s_rep.size()[1],1))(s_rep).squeeze(dim=1)
+        s_rep_mean = nn.AvgPool2d((s_rep.size()[1],1))(s_rep).squeeze(dim=1)
+        s_rep = torch.cat([s_rep_max, s_rep_mean], 1)
+        return s_rep
 
-class RSPenTanhModel(pl.LightningModule):
+class RTransformerModel(pl.LightningModule):
     def __init__(self, name, train_dataset, test_dataset):
-        super(RSPenTanhModel, self).__init__()
-        self.lin1 = nn.Linear(HIDDEN_SIZE*8, HIDDEN_SIZE)
-        self.lin2 = nn.Linear(HIDDEN_SIZE, 1)
-        self.pen_tanh = PenalizedTanh()
+        super(RTransformerModel, self).__init__()
+        self.hidden_size = 512
+        self.lin1 = nn.Linear(self.hidden_size*8, self.hidden_size)
+        self.lin2 = nn.Linear(self.hidden_size, 1)
+        self.relu = nn.ReLU()
         self.dropout = nn.Dropout(DROPOUT_P)
         self.sigmoid = nn.Sigmoid()
         self.Encoder = Encoder()
@@ -57,7 +62,7 @@ class RSPenTanhModel(pl.LightningModule):
 
         # Linear layers and softmax
         final = self.lin1(final)
-        final = F.relu(final)
+        final = self.relu(final)
         final = self.dropout(final)
         final = self.lin2(final)
         out = self.sigmoid(final)
@@ -166,6 +171,7 @@ class RSPenTanhModel(pl.LightningModule):
         test_rec_mean /= len(outputs)
         test_f1_mean /= len(outputs)
         tqdm_dict = {'test_loss': test_loss_mean.item(), 'test_acc': test_acc_mean.item()}
+        print("Testing accuracy is {}".format(test_acc_mean.item()))
     
         # show test_loss and test_acc in progress bar but only log test_loss
         results = {

@@ -19,7 +19,7 @@ class Encoder(nn.Module):
         super(Encoder, self).__init__()
         self.hidden_size = HIDDEN_SIZE
         self.dropout = nn.Dropout(DROPOUT_P)
-        self.gru1 = GRUPenTanh(195,HIDDEN_SIZE)
+        self.gru1 = GRUPenTanh(CHAR_SIZE,HIDDEN_SIZE)
         self.gru2 = GRUPenTanh(HIDDEN_SIZE*2,HIDDEN_SIZE)
     
     def init_hidden(self, batch_size):
