@@ -37,7 +37,7 @@ class Encoder(nn.Module):
 
 class MogrifierLSTMModel(pl.LightningModule):
     def __init__(self, name, train_dataset, test_dataset):
-        super(RSPenTanhPoolModel, self).__init__()
+        super(MogrifierLSTMModel, self).__init__()
         self.lin1 = nn.Linear(HIDDEN_SIZE*16, HIDDEN_SIZE)
         self.lin2 = nn.Linear(HIDDEN_SIZE, 1)
         self.pen_tanh = PenalizedTanh()

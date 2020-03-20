@@ -59,8 +59,8 @@ class MogrifierLSTM(nn.Module):
         super(MogrifierLSTM, self).__init__()
         # Hidden dimensions
         self.hidden_dim = hidden_dim
-        self.forward_gru_cell = MogrifierLSTMCell(input_dim, hidden_dim, steps)
-        self.backward_gru_cell = MogrifierLSTMCell(input_dim, hidden_dim, steps)
+        self.forward_cell = MogrifierLSTMCell(input_dim, hidden_dim, steps)
+        self.backward_cell = MogrifierLSTMCell(input_dim, hidden_dim, steps)
 
     def forward(self, x):
         # Initialize hidden state with zeros
@@ -73,9 +73,11 @@ class MogrifierLSTM(nn.Module):
         outs = []
         hn_forward = h0_forward[0,:,:]
         hn_backward = h0_backward[0,:,:]
+        cn_forward = h0_forward[0,:,:]
+        cn_backward = h0_backward[0,:,:]        
         for seq in range(x.size(1)):
-            hn_forward = self.forward_gru_cell(x[:,seq,:], hn_forward)
-            hn_backward = self.backward_gru_cell(x[:,x.size(1)-seq-1,:], hn_backward)
+            hn_forward, cn_forward = self.forward_cell(x[:,seq,:], (hn_forward,cn_forward))
+            hn_backward, cn_backward = self.backward_cell(x[:,x.size(1)-seq-1,:], (hn_backward,cn_backward))
             hn = torch.cat([hn_forward, hn_backward], dim=1)
             outs.append(hn)
         out = outs[-1].squeeze()
