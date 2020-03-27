@@ -15,56 +15,35 @@ torch.manual_seed(0)
 torch.backends.cudnn.deterministic=True
 torch.backends.cudnn.benchmark=False
 
-class Encoder(nn.Module):
-    def __init__(self, rnn_type='GRU'):
-        super(Encoder, self).__init__()
+class TransformerInteractionModel(pl.LightningModule):
+    def __init__(self, name, train_dataset, test_dataset):
+        super(TransformerInteractionModel, self).__init__()
         self.hidden_size = 512
-        self.dropout = nn.Dropout(DROPOUT_P)
-        self.relu = nn.ReLU()
-        if rnn_type == 'GRU':
-            self.rnn1 = nn.GRU(CHAR_SIZE, hidden_size=int(self.hidden_size / 2), batch_first=True, bidirectional=True)
-        elif rnn_type == 'LSTM':
-            self.rnn1 = nn.LSTM(CHAR_SIZE, hidden_size=int(self.hidden_size / 2), batch_first=True, bidirectional=True)
-        elif rnn_type == 'MogrifierLSTM':
-            self.rnn1 = MogrifierLSTM(CHAR_SIZE, int(self.hidden_size / 2), 3)
-        else:
-            self.rnn1 = nn.RNN(CHAR_SIZE, hidden_size=int(self.hidden_size / 2), batch_first=True, bidirectional=True)
-        self.rnn2 = RTransformer(512, rnn_type, 7, 3, 1, 8, DROPOUT_P)
-    
-    def forward(self, s, lengths):
-        s_rep, _ = self.rnn1(s)
-        s_rep = self.dropout(s_rep)
-        s_rep = self.rnn2(s_rep)
-        s_rep = self.dropout(s_rep)
-        s_rep_max = nn.MaxPool2d((s_rep.size()[1],1))(s_rep).squeeze(dim=1)
-        s_rep_mean = nn.AvgPool2d((s_rep.size()[1],1))(s_rep).squeeze(dim=1)
-        s_rep = torch.cat([s_rep_max, s_rep_mean], 1)
-        return s_rep
-
-class RTransformerModel(pl.LightningModule):
-    def __init__(self, name, train_dataset, test_dataset, rnn_type='GRU'):
-        super(RTransformerModel, self).__init__()
-        self.hidden_size = 512
-        self.lin1 = nn.Linear(self.hidden_size*8, self.hidden_size)
+        self.lin1 = nn.Linear(self.hidden_size * 2, self.hidden_size)
         self.lin2 = nn.Linear(self.hidden_size, 1)
         self.relu = nn.ReLU()
         self.dropout = nn.Dropout(DROPOUT_P)
         self.sigmoid = nn.Sigmoid()
-        self.Encoder = Encoder(rnn_type)
+        self.Encoder = MogrifierLSTM(CHAR_SIZE, int(self.hidden_size / 2), 3)
+        self.Interaction = RTransformer(512, 'MogrifierLSTM', 7, 3, 1, 8, DROPOUT_P)
         self.train_dataset =  train_dataset
         self.test_dataset = test_dataset
         self.name = name
     
+    
     def forward(self, s1, s2, s1_lens, s2_lens):
         # Representation for each input sentence
-        s1_rep = self.Encoder(s1, s1_lens)
-        s2_rep = self.Encoder(s2, s2_lens)
-
-        # Concatenate, multiply, subtract
+        s1_rep, _ = self.Encoder(s1)
+        s2_rep, _ = self.Encoder(s2)
+        
+        # Concatenate
         conc = torch.cat([s1_rep, s2_rep], 1)
-        mul = s1_rep * s2_rep
-        dif = torch.abs(s1_rep - s2_rep)
-        final = torch.cat([conc, mul, dif], 1)
+        conc = self.dropout(conc)
+        
+        s_rep = self.Interaction(conc)
+        s_rep_max = nn.MaxPool2d((s_rep.size()[1],1))(s_rep).squeeze(dim=1)
+        s_rep_mean = nn.AvgPool2d((s_rep.size()[1],1))(s_rep).squeeze(dim=1)
+        final = torch.cat([s_rep_max, s_rep_mean], 1)
         final = self.dropout(final)
 
         # Linear layers and softmax
@@ -196,8 +175,4 @@ class RTransformerModel(pl.LightningModule):
             myfile.write("F1: {}\n".format(test_f1_mean))
             myfile.write("\n")
         
-        return results    
-
-class RMogrifierTransformerModel(RTransformerModel):
-    def __init__(self, name, train_dataset, test_dataset):
-        super(RMogrifierTransformerModel, self).__init__(name, train_dataset, test_dataset, rnn_type='MogrifierLSTM')
+        return results

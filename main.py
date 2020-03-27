@@ -9,7 +9,8 @@ from RSPenTanhModel import RSPenTanhModel
 from RSPenTanhPoolModel import RSPenTanhPoolModel
 from RSHardAttentionModel import RSHardAttentionModel
 from TransformerModel import TransformerModel
-from RTransformerModel import RTransformerModel, RMogrifierTransformerModel, TransformerInteractionModel
+from RTransformerModel import RTransformerModel, RMogrifierTransformerModel
+from TransformerInteractionModel import TransformerInteractionModel
 from RSPenTanhHardAttentionModel import RSPenTanhHardAttentionModel
 from MogrifierLSTMModel import MogrifierLSTMModel
 import pytorch_lightning as pl
