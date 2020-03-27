@@ -19,17 +19,17 @@ class Encoder(nn.Module):
         super(Encoder, self).__init__()
         self.hidden_size = HIDDEN_SIZE
         self.dropout = nn.Dropout(DROPOUT_P)
-        self.gru1 = MogrifierLSTM(CHAR_SIZE,HIDDEN_SIZE,3)
-        self.gru2 = MogrifierLSTM(HIDDEN_SIZE*2,HIDDEN_SIZE,3)
+        self.rnn1 = MogrifierLSTM(CHAR_SIZE,HIDDEN_SIZE,3)
+        self.rnn2 = MogrifierLSTM(HIDDEN_SIZE*2,HIDDEN_SIZE,3)
     
     def init_hidden(self, batch_size):
         directions = 2
         return Variable(torch.zeros((directions, batch_size, self.hidden_size))).cuda()
     
     def forward(self, s, lengths):
-        s_rep, _ = self.gru1(s)
+        s_rep, _ = self.rnn1(s)
         s_rep = self.dropout(s_rep)
-        s_rep, _ = self.gru2(s_rep)
+        s_rep, _ = self.rnn2(s_rep)
         s_rep_max = nn.MaxPool2d((s_rep.size()[1],1))(s_rep).squeeze(dim=1)
         s_rep_mean = nn.AvgPool2d((s_rep.size()[1],1))(s_rep).squeeze(dim=1)
         s_rep = torch.cat([s_rep_max, s_rep_mean], 1)

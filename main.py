@@ -9,7 +9,7 @@ from RSPenTanhModel import RSPenTanhModel
 from RSPenTanhPoolModel import RSPenTanhPoolModel
 from RSHardAttentionModel import RSHardAttentionModel
 from TransformerModel import TransformerModel
-from RTransformerModel import RTransformerModel
+from RTransformerModel import RTransformerModel, RMogrifierTransformerModel, TransformerInteractionModel
 from RSPenTanhHardAttentionModel import RSPenTanhHardAttentionModel
 from MogrifierLSTMModel import MogrifierLSTMModel
 import pytorch_lightning as pl
@@ -29,7 +29,8 @@ args=parser.parse_args()
 #############################################
 
 models = {'rs':RSModel, 'rs_pool':RSPoolModel, 'rs_pentanh':RSPenTanhModel, 'rs_pentanh_pool':RSPenTanhPoolModel, 'rs_hardatt':RSHardAttentionModel, \
-          'rs_pentanh_hardatt':RSPenTanhHardAttentionModel, 'transformer':TransformerModel, 'r_transformer': RTransformerModel, 'mogrifier_lstm': MogrifierLSTMModel }
+          'rs_pentanh_hardatt':RSPenTanhHardAttentionModel, 'transformer':TransformerModel, 'r_transformer': RTransformerModel, \
+          'mogrifier_lstm': MogrifierLSTMModel, 'r_mogrifier_transformer': RMogrifierTransformerModel, 'transformer_interaction': TransformerInteractionModel }
 
 model = models[args.model](args.model, args.train, args.test)
 
@@ -46,11 +47,11 @@ trainer = Trainer(gpus=1, \
                   max_nb_epochs=20, \
                   early_stop_callback=early_stop_callback)
 
-#try:
-#    model.load_state_dict(torch.load('weights/{}-{}.pt'.format(args.model, args.train)),strict=True)
-#    print("Successfully loaded weights")
-#except:
-#    trainer.fit(model)
+try:
+    model.load_state_dict(torch.load('weights/{}-{}.pt'.format(args.model, args.train)),strict=True)
+    print("Successfully loaded weights")
+except:
+    trainer.fit(model)
 
 trainer.fit(model)
 trainer.test(model)

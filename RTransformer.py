@@ -3,6 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import math, copy, time
 import numpy as np
+from layers import GRUPenTanh, MogrifierLSTM
 
 def clones(module, N):
     "Produce N identical layers."
@@ -118,6 +119,8 @@ class LocalRNN(nn.Module):
             self.rnn = nn.GRU( output_dim, int(output_dim / 2), batch_first=True, bidirectional=True)
         elif rnn_type == 'LSTM':
             self.rnn = nn.LSTM( output_dim, int(output_dim / 2), batch_first=True, bidirectional=True)
+        elif rnn_type == 'MogrifierLSTM':
+            self.rnn = MogrifierLSTM( output_dim, int(output_dim / 2), 3)
         else:
             self.rnn = nn.RNN( output_dim, int(output_dim / 2), batch_first=True, bidirectional=True)
 
