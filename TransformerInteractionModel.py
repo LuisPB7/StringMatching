@@ -25,7 +25,7 @@ class TransformerInteractionModel(pl.LightningModule):
         self.dropout = nn.Dropout(DROPOUT_P)
         self.sigmoid = nn.Sigmoid()
         self.Encoder = MogrifierLSTM(CHAR_SIZE, int(self.hidden_size / 2), 3)
-        self.Interaction = RTransformer(512, 'MogrifierLSTM', 7, 3, 1, 8, DROPOUT_P)
+        self.Interaction = RTransformer(self.hidden_size, 'MogrifierLSTM', 7, 3, 1, 8, DROPOUT_P)
         self.train_dataset =  train_dataset
         self.test_dataset = test_dataset
         self.name = name
