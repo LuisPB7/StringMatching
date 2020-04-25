@@ -39,10 +39,13 @@ class StringMatchingDataset(Dataset):
         self.n_chars = len(characters)
 
     def stringToCharSeq(self, string):
-        string = list(bytearray(unicodedata.normalize('NFKD', string), encoding='utf-8'))
-        tensor = torch.zeros(len(string), self.n_chars)
-        for i, ch in enumerate(string):
-            tensor[i][self.characters.index(ch)] = 1.0
+        # Replace invalid characters
+        string = string.replace("{", " ").replace("}", " ").replace("\\", " ").replace("$", " ")
+        barray = list(bytearray(unicodedata.normalize('NFKD', string), encoding='utf-8'))
+        tensor = torch.zeros(len(barray), self.n_chars)
+        for i, ch in enumerate(barray): 
+         try: tensor[i][self.characters.index(ch)] = 1.0
+         except: print("ERROR WHEN PROCESSING CHARACTER " + repr(ch) + " IN " + string)
         return tensor
 
     def __len__(self):

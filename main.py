@@ -13,6 +13,7 @@ from RTransformerModel import RTransformerModel, RMogrifierTransformerModel
 from TransformerInteractionModel import TransformerInteractionModel
 from RSPenTanhHardAttentionModel import RSPenTanhHardAttentionModel
 from MogrifierLSTMModel import MogrifierLSTMModel
+from SHARNNModel import SHARNNModel
 import pytorch_lightning as pl
 from pytorch_lightning.callbacks import ModelCheckpoint, EarlyStopping
 from pytorch_lightning import Trainer
@@ -31,7 +32,7 @@ args=parser.parse_args()
 
 models = {'rs':RSModel, 'rs_pool':RSPoolModel, 'rs_pentanh':RSPenTanhModel, 'rs_pentanh_pool':RSPenTanhPoolModel, 'rs_hardatt':RSHardAttentionModel, \
           'rs_pentanh_hardatt':RSPenTanhHardAttentionModel, 'transformer':TransformerModel, 'r_transformer': RTransformerModel, \
-          'mogrifier_lstm': MogrifierLSTMModel, 'r_mogrifier_transformer': RMogrifierTransformerModel, 'transformer_interaction': TransformerInteractionModel }
+          'mogrifier_lstm': MogrifierLSTMModel, 'r_mogrifier_transformer': RMogrifierTransformerModel, 'transformer_interaction': TransformerInteractionModel, 'sha_rnn': SHARNNModel }
 
 model = models[args.model](args.model, args.train, args.test)
 
@@ -54,5 +55,5 @@ try:
 except:
     trainer.fit(model)
 
-trainer.fit(model)
+#trainer.fit(model)
 trainer.test(model)

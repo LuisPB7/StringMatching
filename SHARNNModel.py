@@ -2,55 +2,47 @@ import torch
 from torch import nn
 from torchvision import transforms, datasets
 from torch.autograd import Variable
-from layers import PenalizedTanh, HardAlignmentAttention, MogrifierLSTM
+from layers import PenalizedTanh, HardAlignmentAttention, GRUPenTanh
 from utils import StringMatchingDataset, PadSequence
 from variables import *
 from torch.utils.data import DataLoader
 from torch.nn import functional as F
 import pytorch_lightning as pl
 from collections import OrderedDict
-from RTransformer import RTransformer
+from SHARNN import SHARNN
 
 torch.manual_seed(0)
 torch.backends.cudnn.deterministic=True
 torch.backends.cudnn.benchmark=False
 
 class Encoder(nn.Module):
-    def __init__(self, rnn_type='GRU'):
+    def __init__(self):
         super(Encoder, self).__init__()
-        self.hidden_size = 512
+        self.hidden_size = HIDDEN_SIZE
         self.dropout = nn.Dropout(DROPOUT_P)
-        self.relu = nn.ReLU()
-        if rnn_type == 'GRU':
-            self.rnn1 = nn.GRU(CHAR_SIZE, hidden_size=int(self.hidden_size / 2), batch_first=True, bidirectional=True)
-        elif rnn_type == 'LSTM':
-            self.rnn1 = nn.LSTM(CHAR_SIZE, hidden_size=int(self.hidden_size / 2), batch_first=True, bidirectional=True)
-        elif rnn_type == 'MogrifierLSTM':
-            self.rnn1 = MogrifierLSTM(CHAR_SIZE, int(self.hidden_size / 2), 3)
-        else:
-            self.rnn1 = nn.RNN(CHAR_SIZE, hidden_size=int(self.hidden_size / 2), batch_first=True, bidirectional=True)
-        self.rnn2 = RTransformer(512, rnn_type, 7, 3, 1, 8, DROPOUT_P)
+        self.rnn1 = SHARNN(CHAR_SIZE,HIDDEN_SIZE,3)
+    
+    def init_hidden(self, batch_size):
+        directions = 2
+        return Variable(torch.zeros((directions, batch_size, self.hidden_size))).cuda()
     
     def forward(self, s, lengths):
-        s_rep, _ = self.rnn1(s)
-        s_rep = self.dropout(s_rep)
-        s_rep = self.rnn2(s_rep)
-        s_rep = self.dropout(s_rep)
+        s_rep = self.rnn1(s)
+        s_rep = self.dropout(s_rep[0])
         s_rep_max = nn.MaxPool2d((s_rep.size()[1],1))(s_rep).squeeze(dim=1)
         s_rep_mean = nn.AvgPool2d((s_rep.size()[1],1))(s_rep).squeeze(dim=1)
         s_rep = torch.cat([s_rep_max, s_rep_mean], 1)
         return s_rep
 
-class RTransformerModel(pl.LightningModule):
-    def __init__(self, name, train_dataset, test_dataset, rnn_type='GRU'):
-        super(RTransformerModel, self).__init__()
-        self.hidden_size = 512
-        self.lin1 = nn.Linear(self.hidden_size * 8, self.hidden_size)
-        self.lin2 = nn.Linear(self.hidden_size, 1)
-        self.relu = nn.ReLU()
+class SHARNNModel(pl.LightningModule):
+    def __init__(self, name, train_dataset, test_dataset):
+        super(SHARNNModel, self).__init__()
+        self.lin1 = nn.Linear(HIDDEN_SIZE*8, HIDDEN_SIZE)
+        self.lin2 = nn.Linear(HIDDEN_SIZE, 1)
+        self.pen_tanh = PenalizedTanh()
         self.dropout = nn.Dropout(DROPOUT_P)
         self.sigmoid = nn.Sigmoid()
-        self.Encoder = Encoder(rnn_type)
+        self.Encoder = Encoder()
         self.train_dataset =  train_dataset
         self.test_dataset = test_dataset
         self.name = name
@@ -69,7 +61,7 @@ class RTransformerModel(pl.LightningModule):
 
         # Linear layers and softmax
         final = self.lin1(final)
-        final = self.relu(final)
+        final = F.relu(final)
         final = self.dropout(final)
         final = self.lin2(final)
         out = self.sigmoid(final)
@@ -197,7 +189,3 @@ class RTransformerModel(pl.LightningModule):
             myfile.write("\n")
         
         return results    
-
-class RMogrifierTransformerModel(RTransformerModel):
-    def __init__(self, name, train_dataset, test_dataset):
-        super(RMogrifierTransformerModel, self).__init__(name, train_dataset, test_dataset, rnn_type='MogrifierLSTM')
